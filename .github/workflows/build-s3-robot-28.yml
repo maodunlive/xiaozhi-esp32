@@ -6,6 +6,7 @@ on:
     paths:
       - 'main/boards/s3-robot-28/**'
       - '.github/workflows/build-s3-robot-28.yml'
+      - 'tools/patch_hidden_wifi.py'
 
 permissions:
   contents: write
@@ -21,13 +22,24 @@ jobs:
         with:
           submodules: false
 
-      - name: Build firmware
+      - name: 首次构建（只为拉取 managed_components）
+        shell: bash
+        continue-on-error: true
+        run: |
+          . $IDF_PATH/export.sh
+          python3 scripts/build.py s3-robot-28 --name s3-robot-28 --language zh-CN --wake-word nihaoxiaozhi
+
+      - name: 打补丁（隐藏 SSID 支持）
+        shell: bash
+        run: python3 tools/patch_hidden_wifi.py
+
+      - name: 最终构建
         shell: bash
         run: |
           . $IDF_PATH/export.sh
           python3 scripts/build.py s3-robot-28 --name s3-robot-28 --language zh-CN --wake-word nihaoxiaozhi --zip
 
-      - name: 把固件提交回仓库（绕开制品下载通道）
+      - name: 把固件提交回仓库
         shell: bash
         run: |
           mkdir -p firmware
@@ -38,7 +50,7 @@ jobs:
           git config user.email "firmware-bot@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
           git add -f firmware/merged-binary.bin
-          git commit -m "firmware: s3-robot-28 (run ${{ github.run_id }})" || echo "无变化"
+          git commit -m "firmware: s3-robot-28 + 隐藏SSID支持 (run ${{ github.run_id }})" || echo "无变化"
           git push origin HEAD:${{ github.ref_name }}
 
       - name: Upload firmware
