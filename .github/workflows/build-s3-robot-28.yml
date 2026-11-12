@@ -1,0 +1,34 @@
+name: Build s3-robot-28 firmware
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'main/boards/s3-robot-28/**'
+      - '.github/workflows/build-s3-robot-28.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:release-v6.1
+      options: --user root
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      - name: Build firmware
+        shell: bash
+        run: |
+          . $IDF_PATH/export.sh
+          python3 scripts/build.py s3-robot-28 --name s3-robot-28 --language zh-CN --wake-word nihaoxiaozhi --zip
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: s3-robot-28-firmware
+          path: |
+            build/merged-binary.bin
+            build/xiaozhi.bin
+            releases/*.zip
