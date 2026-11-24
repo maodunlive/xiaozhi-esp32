@@ -29,6 +29,7 @@ protected:
     std::unique_ptr<LvglGif> gif_controller_ = nullptr;
     bool emotion_uses_image_ = false;
     lv_obj_t* emoji_box_ = nullptr;
+    lv_obj_t* emoji_ring_ = nullptr;   // 品牌徽章圆环（B 方案）
     lv_obj_t* chat_message_label_ = nullptr;
     esp_timer_handle_t preview_timer_ = nullptr;
     std::unique_ptr<LvglImage> preview_image_cached_ = nullptr;

@@ -31,17 +31,22 @@ void LcdDisplay::InitializeLcdThemes() {
     auto large_icon_font = std::make_shared<LvglBuiltInFont>(&font_material_symbols_30_4);
     auto emoji_font = std::make_shared<LvglBuiltInFont>(&font_noto_emoji_30_4);
 
+    // ── 品牌蓝配色（B 方案）：深海军蓝底 + 青色点缀 ──
+    auto apply_brand_theme = [](LvglTheme* t) {
+        t->set_background_color(lv_color_hex(0x0A1526));
+        t->set_text_color(lv_color_hex(0xDBE9F6));
+        t->set_chat_background_color(lv_color_hex(0x0A1526));
+        t->set_user_bubble_color(lv_color_hex(0x1D6FA5));
+        t->set_assistant_bubble_color(lv_color_hex(0x16283C));
+        t->set_system_bubble_color(lv_color_hex(0x0A1526));
+        t->set_system_text_color(lv_color_hex(0x8FB6D9));
+        t->set_border_color(lv_color_hex(0x2EA8D8));
+        t->set_low_battery_color(lv_color_hex(0xD94F4F));
+    };
+
     // light theme
     auto light_theme = new LvglTheme("light");
-    light_theme->set_background_color(lv_color_hex(0xFFFFFF));
-    light_theme->set_text_color(lv_color_hex(0x000000));
-    light_theme->set_chat_background_color(lv_color_hex(0xE0E0E0));
-    light_theme->set_user_bubble_color(lv_color_hex(0x00FF00));
-    light_theme->set_assistant_bubble_color(lv_color_hex(0xDDDDDD));
-    light_theme->set_system_bubble_color(lv_color_hex(0xFFFFFF));
-    light_theme->set_system_text_color(lv_color_hex(0x000000));
-    light_theme->set_border_color(lv_color_hex(0x000000));
-    light_theme->set_low_battery_color(lv_color_hex(0x000000));
+    apply_brand_theme(light_theme);
     light_theme->set_text_font(text_font);
     light_theme->set_icon_font(icon_font);
     light_theme->set_large_icon_font(large_icon_font);
@@ -49,15 +54,7 @@ void LcdDisplay::InitializeLcdThemes() {
 
     // dark theme
     auto dark_theme = new LvglTheme("dark");
-    dark_theme->set_background_color(lv_color_hex(0x000000));
-    dark_theme->set_text_color(lv_color_hex(0xFFFFFF));
-    dark_theme->set_chat_background_color(lv_color_hex(0x1F1F1F));
-    dark_theme->set_user_bubble_color(lv_color_hex(0x00FF00));
-    dark_theme->set_assistant_bubble_color(lv_color_hex(0x222222));
-    dark_theme->set_system_bubble_color(lv_color_hex(0x000000));
-    dark_theme->set_system_text_color(lv_color_hex(0xFFFFFF));
-    dark_theme->set_border_color(lv_color_hex(0xFFFFFF));
-    dark_theme->set_low_battery_color(lv_color_hex(0xFF0000));
+    apply_brand_theme(dark_theme);
     dark_theme->set_text_font(text_font);
     dark_theme->set_icon_font(icon_font);
     dark_theme->set_large_icon_font(large_icon_font);
@@ -350,6 +347,10 @@ LcdDisplay::~LcdDisplay() {
     if (emoji_box_ != nullptr) {
         lv_obj_del(emoji_box_);
     }
+    if (emoji_ring_ != nullptr) {
+        lv_obj_del(emoji_ring_);
+        emoji_ring_ = nullptr;
+    }
     if (content_ != nullptr) {
         lv_obj_del(content_);
     }
@@ -434,7 +435,9 @@ void LcdDisplay::SetupUI() {
     lv_obj_set_style_pad_all(container_, 0, 0);
     lv_obj_set_style_border_width(container_, 0, 0);
     lv_obj_set_style_pad_row(container_, 0, 0);
-    lv_obj_set_style_bg_color(container_, lvgl_theme->background_color(), 0);
+    lv_obj_set_style_bg_color(container_, lv_color_hex(0x12243F), 0);
+    lv_obj_set_style_bg_grad_color(container_, lv_color_hex(0x060D18), 0);
+    lv_obj_set_style_bg_grad_dir(container_, LV_GRAD_DIR_VER, 0);
     lv_obj_set_style_border_color(container_, lvgl_theme->border_color(), 0);
 
     /* Layer 1: Top bar - for status icons */
@@ -544,6 +547,19 @@ void LcdDisplay::SetupUI() {
     lv_obj_center(low_battery_label_);
     lv_obj_add_flag(low_battery_popup_, LV_OBJ_FLAG_HIDDEN);
 
+    /* 品牌徽章：表情背后的青色圆环 */
+    emoji_ring_ = lv_obj_create(screen);
+    lv_obj_set_size(emoji_ring_, 132, 132);
+    lv_obj_set_style_radius(emoji_ring_, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(emoji_ring_, lv_color_hex(0x2EA8D8), 0);
+    lv_obj_set_style_bg_opa(emoji_ring_, LV_OPA_10, 0);
+    lv_obj_set_style_border_width(emoji_ring_, 2, 0);
+    lv_obj_set_style_border_color(emoji_ring_, lv_color_hex(0x2EA8D8), 0);
+    lv_obj_set_style_border_opa(emoji_ring_, LV_OPA_50, 0);
+    lv_obj_set_style_pad_all(emoji_ring_, 0, 0);
+    lv_obj_remove_flag(emoji_ring_, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_align(emoji_ring_, LV_ALIGN_CENTER, 0, -12);
+
     emoji_image_ = lv_img_create(screen);
     lv_obj_align(emoji_image_, LV_ALIGN_TOP_MID, 0,
                  text_font->line_height + lvgl_theme->spacing(8));
@@ -620,8 +636,11 @@ void LcdDisplay::SetChatMessage(const char* role, const char* content) {
             }
         }
     } else {
-        // Hide the centered AI logo
+        // Hide the centered AI logo（连同品牌圆环一起隐藏）
         lv_obj_add_flag(emoji_label_, LV_OBJ_FLAG_HIDDEN);
+        if (emoji_ring_ != nullptr) {
+            lv_obj_add_flag(emoji_ring_, LV_OBJ_FLAG_HIDDEN);
+        }
     }
 
     // Avoid empty message boxes
@@ -633,7 +652,7 @@ void LcdDisplay::SetChatMessage(const char* role, const char* content) {
 
     // Create a message bubble
     lv_obj_t* msg_bubble = lv_obj_create(content_);
-    lv_obj_set_style_radius(msg_bubble, 8, 0);
+    lv_obj_set_style_radius(msg_bubble, 12, 0);
     lv_obj_set_scrollbar_mode(msg_bubble, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_border_width(msg_bubble, 0, 0);
     lv_obj_set_style_pad_all(msg_bubble, lvgl_theme->spacing(4), 0);
@@ -898,6 +917,9 @@ void LcdDisplay::ClearChatMessages() {
     chat_message_label_ = nullptr;
 
     ShowEmotion();
+    if (emoji_ring_ != nullptr) {
+        lv_obj_remove_flag(emoji_ring_, LV_OBJ_FLAG_HIDDEN);
+    }
 
     ESP_LOGI(TAG, "Chat messages cleared");
 }
